@@ -596,7 +596,7 @@ void ATECCX08A::cleanInputBuffer()
 	Sparkfun Default Configuration Sketch calls this, and then locks the data/otp zones and slot 0.
 */
 
-boolean ATECCX08A::createNewKeyPair(uint16_t slot)
+boolean ATECCX08A::createNewKeyPair(uint16_t slot, boolean debug)
 {  
   sendCommand(COMMAND_OPCODE_GENKEY, GENKEY_MODE_NEW_PRIVATE, slot);
 
@@ -809,7 +809,7 @@ boolean ATECCX08A::createSignature(uint8_t *data, uint16_t slot, bool debug)
     when it requests data, and this will allow us to create a unique data + signature for every communication.
 */
 
-boolean ATECCX08A::loadTempKey(uint8_t *data)
+boolean ATECCX08A::loadTempKey(uint8_t *data, boolean debug)
 {
   sendCommand(COMMAND_OPCODE_NONCE, NONCE_MODE_PASSTHROUGH, 0x0000, data, 32);
   
@@ -886,7 +886,7 @@ boolean ATECCX08A::signTempKey(uint16_t slot, bool debug)
 	Note, it acutally uses loadTempKey, then uses the verify command in "external public key" mode.
 */
 
-boolean ATECCX08A::verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey)
+boolean ATECCX08A::verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey, boolean debug)
 {
   // first, let's load the message into TempKey on the device, this uses NONCE command in passthrough mode.
   boolean loadTempKeyResult = loadTempKey(message);
@@ -1005,7 +1005,7 @@ boolean ATECCX08A::sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t 
   return true;
 }
 
-boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot)
+boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot, boolean debug)
 {
   sendCommand(COMMAND_OPCODE_ECDH, mode, slot, data, 64);
   
@@ -1023,7 +1023,7 @@ boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot)
   else return false;
 }
   
-boolean ATECCX08A::AES_ECB(uint8_t *data, uint16_t slot)
+boolean ATECCX08A::AES_ECB(uint8_t *data, uint16_t slot, boolean debug)
 {
 	sendCommand(COMMAND_OPCODE_AES_ECB, AES_ECB_ENCRYPT, slot, data, 16);
 	delay(100);

@@ -143,10 +143,10 @@ class ATECCX08A {
 	
 	// Random array and fuctions
 	uint8_t random32Bytes[32]; // used to store the complete data return (32 bytes) when we ask for a random number from chip.
-	boolean updateRandom32Bytes(boolean debug = false);
-	uint8_t getRandomByte(boolean debug = false);
-	int getRandomInt(boolean debug = false);
-	long getRandomLong(boolean debug = false);
+	boolean updateRandom32Bytes(bool debug = false);
+	uint8_t getRandomByte(bool debug = false);
+	int getRandomInt(bool debug = false);
+	long getRandomLong(bool debug = false);
 	long random(long max);
 	long random(long min, long max);
 	
@@ -154,24 +154,24 @@ class ATECCX08A {
 	void atca_calculate_crc(uint8_t length, uint8_t *data);	
 	
 	// Key functions
-	boolean createNewKeyPair(uint16_t slot = 0x0000);
-	boolean generatePublicKey(uint16_t slot = 0x0000, boolean debug = true);
+	boolean createNewKeyPair(uint16_t slot = 0x0000, bool debug = false);
+	boolean generatePublicKey(uint16_t slot = 0x0000, bool debug = false);
 	
 	boolean createSignature(uint8_t *data, uint16_t slot = 0x0000, bool debug = false); 
-	boolean loadTempKey(uint8_t *data);  // load 32 bytes of data into tempKey (a temporary memory spot in the IC)
+	boolean loadTempKey(uint8_t *data, bool debug = false);  // load 32 bytes of data into tempKey (a temporary memory spot in the IC)
 	boolean signTempKey(uint16_t slot = 0x0000, bool debug = false); // create signature using contents of TempKey and PRIVATE KEY in slot
-	boolean verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey); // external ECC publicKey only
+	boolean verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey, bool debug = false); // external ECC publicKey only
 
 	boolean read(uint8_t zone, uint16_t address, uint8_t length, bool debug = false);
 	boolean write(uint8_t zone, uint16_t address, uint8_t *data, uint8_t length_of_data);
 
-	boolean readConfigZone(boolean debug = false);
+	boolean readConfigZone(bool debug = false);
 	boolean sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t param2, uint8_t *data = NULL, size_t length_of_data = 0);
-	boolean ECDH(uint8_t *data, uint8_t mode, uint16_t slot);
-	boolean AES_ECB(uint8_t *data, uint16_t slot = 0xFFFF);
+	boolean ECDH(uint8_t *data, uint8_t mode, uint16_t slot, bool debug = false);
+	boolean AES_ECB(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
 	boolean writeProvisionConfig();
-	boolean loadPublicKey(uint8_t *data, boolean debug = true);
-	boolean readPublicKey(boolean debug = true);
+	boolean loadPublicKey(uint8_t *data, bool debug = false);
+	boolean readPublicKey(bool debug = false);
   private:
 
 	#if defined(__IMXRT1062__)
