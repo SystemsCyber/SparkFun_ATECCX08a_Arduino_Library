@@ -21,7 +21,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "SparkFun_ATECCX08a_Arduino_Library.h"
+#include "SparkFun_ATECCX08A_Arduino_Library.h"
 
 /** \brief 
 
@@ -36,7 +36,12 @@
 	for the same purpose.
 */
 
+#if defined(__IMXRT1062__)
 boolean ATECCX08A::begin(uint8_t i2caddr, TwoWire &wirePort)
+#endif
+#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
+boolean ATECCX08A::begin(uint8_t i2caddr, i2c_t3 &wirePort)
+#endif
 {
   //Bring in the user's choices
   _i2cPort = &wirePort; //Grab which port the user wants us to use
@@ -240,6 +245,31 @@ boolean ATECCX08A::lockDataSlot0()
 
 boolean ATECCX08A::lock(uint8_t zone)
 {
+  sendCommand(COMMAND_OPCODE_LOCK, zone, 0x0000);
+
+  delay(32); // time for IC to process command and exectute
+  
+  // Now let's read back from the IC and see if it reports back good things.
+  countGlobal = 0; 
+  if(receiveResponseData(4) == false) return false;
+  idleMode();
+  if(checkCount() == false) return false;
+  if(checkCrc() == false) return false;
+  if(inputBuffer[1] == 0x00) return true;   // If we hear a "0x00", that means it had a successful lock
+  else return false;
+}
+
+/** \brief
+
+	lockDataSlot(byte zone)
+	
+	This function sends the LOCK Command using the argument zone as parameter 1, 
+	and listens for success response (0x00).
+*/
+
+boolean ATECCX08A::lockDataSlot(int slot)
+{
+  uint8_t zone = (slot << 2) | 0b10000010;
   sendCommand(COMMAND_OPCODE_LOCK, zone, 0x0000);
 
   delay(32); // time for IC to process command and exectute
@@ -749,10 +779,18 @@ boolean ATECCX08A::write(uint8_t zone, uint16_t address, uint8_t *data, uint8_t 
 	receives the signature and copies it to signature[].
 */
 
-boolean ATECCX08A::createSignature(uint8_t *data, uint16_t slot)
+boolean ATECCX08A::createSignature(uint8_t *data, uint16_t slot, bool debug)
 {
   boolean loadTempKeyResult = loadTempKey(data);
-  boolean signTempKeyResult = signTempKey(slot);
+  if (debug) {
+    Serial.print("loadTempKeyResult: ");
+    Serial.println(loadTempKeyResult);
+  }
+  boolean signTempKeyResult = signTempKey(slot, debug);
+  if (debug) {
+    Serial.print("signTempKeyResult: ");
+    Serial.println(signTempKeyResult);
+  }
   if(loadTempKeyResult && signTempKeyResult) return true;
   else return false;
 }
@@ -803,17 +841,17 @@ boolean ATECCX08A::loadTempKey(uint8_t *data)
 	The response from this command (the signature) is stored in global varaible signature[].
 */
 
-boolean ATECCX08A::signTempKey(uint16_t slot)
+boolean ATECCX08A::signTempKey(uint16_t slot, bool debug)
 {
   sendCommand(COMMAND_OPCODE_SIGN, SIGN_MODE_TEMPKEY, slot);
 
-  delay(50); // time for IC to process command and exectute
+  delay(100); // time for IC to process command and exectute
 
   // Now let's read back from the IC.
-  
+
   if(receiveResponseData(64 + 2 + 1) == false) return false; // signature (64), plus crc (2), plus count (1)
   idleMode();
-  boolean checkCountResult = checkCount();
+  boolean checkCountResult =  checkCount();
   boolean checkCrcResult = checkCrc();
   
   // update signature[] array and print it to serial terminal nicely formatted for easy copy/pasting between sketches
@@ -824,18 +862,15 @@ boolean ATECCX08A::signTempKey(uint16_t slot)
     {
       signature[i] = inputBuffer[i + 1];
     }
-  
-	Serial.println();
-    Serial.println("uint8_t signature[64] = {");
+  if (debug){
+    Serial.print("signature = [");
     for (int i = 0; i < sizeof(signature) ; i++)
     {
-	  Serial.print("0x");
-	  if((signature[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
-      Serial.print(signature[i], HEX);
-      if(i != 63) Serial.print(", ");
-	  if((63-i) % 16 == 0) Serial.println();
+      Serial.printf("0x%02X",signature[i]);
+      if (i != 63) Serial.print(", ");
     }
-	Serial.println("};");
+    Serial.println("]");
+  }
 	return true;
   }
   else return false;
@@ -905,7 +940,7 @@ boolean ATECCX08A::writeConfigSparkFun()
   result1 = write(ZONE_CONFIG, (96 / 4), data1, 4);
   // set slot config on slot 0 and 1 to 0x8320
   // EXT signatures, INT signatures, IsSecret, Write config never
-  uint8_t data2[] = {0x83, 0x20, 0x83, 0x20}; // for slot config bit definitions see datasheet pg 20
+  uint8_t data2[] = {0x87, 0x20, 0x8F, 0x20}; // for slot config bit definitions see datasheet pg 20
   result2 = write(ZONE_CONFIG, (20 / 4), data2, 4);
   
   return (result1 && result2);
@@ -932,7 +967,7 @@ boolean ATECCX08A::sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t 
   // It expects to see: word address, count, command opcode, param1, param2, data (optional), CRC[0], CRC[1]
   
   uint8_t total_transmission_length;
-  total_transmission_length = (1 +1 +1 +1 +2 +length_of_data +2); 
+  total_transmission_length = (1 + 1 + 1 + 1 + 2 + length_of_data + 2); 
   // word address val (1) + count (1) + command opcode (1) param1 (1) + param2 (2) data (0-?) + crc (2)
 
   uint8_t total_transmission[total_transmission_length];
@@ -970,15 +1005,162 @@ boolean ATECCX08A::sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t 
   return true;
 }
 
+boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot)
+{
+  sendCommand(COMMAND_OPCODE_ECDH, mode, slot, data, 64);
+  
+
+  delay(100); // time for IC to process command and exectute
+
+  // Now let's read back from the IC.
+  if(receiveResponseData(4) == false) return false;  
+  idleMode();
+  if(checkCount() == false) return false;
+  if(checkCrc() == false) return false;
+  if(inputBuffer[1] == 0x00) {
+  Serial.println("Succesfully Calculated ECDH Shared Secret and Loaded into TempKey");
+  }
+  else return false;
+}
+  
+boolean ATECCX08A::AES_ECB(uint8_t *data, uint16_t slot)
+{
+	sendCommand(COMMAND_OPCODE_AES_ECB, AES_ECB_ENCRYPT, slot, data, 16);
+	delay(100);
+
+	if(receiveResponseData(19) == false) return false;  
+	idleMode();
+	boolean checkCountResult = checkCount();
+	boolean checkCrcResult = checkCrc();
+
+	if(checkCountResult && checkCrcResult) // check that it was a good message
+  {  
+    // we don't need the count value (which is currently the first byte of the inputBuffer)
+    for (int i = 0 ; i < 16 ; i++) // for loop through to grab all but the first position (which is "count" of the message)
+    {
+      AES_buffer[i] = inputBuffer[i + 1];
+    }
+  
+  Serial.println();
+    Serial.println("uint8_t AES_buffer[16] = {");
+    for (int i = 0; i < sizeof(AES_buffer) ; i++)
+    {
+    Serial.print("0x");
+    if((AES_buffer[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
+      Serial.print(AES_buffer[i], HEX);
+      if(i != 15) Serial.print(", ");
+    if((15-i) % 16 == 0) Serial.println();
+    }
+  Serial.println("};");
+  return true;
+  }
+  else return false;
+
+}
 
 
+boolean ATECCX08A::writeProvisionConfig()
+{
+  // keep track of our write command results.
+  boolean result1; 
+  boolean result2;
+  boolean result3;
+  boolean result4;
+
+  //The write command must send 4 or 32 bytes, so 2 or 16 slots have to be written at a time
+  
+  //These first two will be for private key slot
+  // set keytype on slot 0 and 1 to 0x3300
+  // Lockable, ECC, PuInfo set (public key always allowed to be generated), contains a private Key
+  uint8_t data1[] = {0x33, 0x00, 0x33, 0x00}; // 0x3300 sets the keyconfig.keyType, see datasheet pg 20
+  result1 = write(ZONE_CONFIG, (96 / 4), data1, 4);
+  // set slot config on slot 0 and 1 to 0x8720
+  // EXT signatures, INT signatures, IsSecret, Write config never, ECDH allowed
+  uint8_t data2[] = {0x87, 0x20, 0x87, 0x20}; 
+  result2 = write(ZONE_CONFIG, (20 / 4), data2, 4);
+
+  //Now set slotconfig and keyconfig for public key slot
+  // set keytype on slot 10 and 11 
+  //keyconfig for slot 10: no reqAuth, no ReqRandom, individual slot lockable, P256 ECC key type, not priv key
+  //keyconfig for slot 11: no reqAuth, no ReqRandom, individual slot lockable, P256 ECC key type, not priv key
+  uint8_t data3[] = {0x30, 0x00, 0x30, 0x00}; 
+  result3 = write(ZONE_CONFIG, (116 / 4), data3, 4);
+
+  // set slot config on slot 10 and 11 
+  //slotconfig for slot 10: is not secret, not encryptread, no usage limitation, can be used by all commands, write config never
+  //slotconfig for slot 11: is not secret, not encryptread, no usage limitation, can be used by all commands, write config never
+  uint8_t data4[] = {0x00, 0x20, 0x00, 0x20}; 
+  result4 = write(ZONE_CONFIG, (40 / 4), data4, 4);
 
 
+  return (result1 && result2 && result3 && result4);
+}
 
 
+boolean ATECCX08A::loadPublicKey(uint8_t *data, bool debug)
+{
+	uint8_t public_x[32];
+	uint8_t public_y[32];
+	for(int i =0; i <32; i++)
+	{
+		public_x[i]=data[i];
+		public_y[i]=data[i+32];
+	}
 
+	//Now Write first 32 bytes of public key to slot 10
+	sendCommand(COMMAND_OPCODE_WRITE, WRITE_DATA_32, ADDRESS_DATA_READ_SLOT10_BLOCK_0, public_x, 32);
+	delay(100);
+	if(receiveResponseData(4) == false) return false;
+	idleMode();
+	if(checkCount() == false) return false;
+	if(checkCrc() == false) return false;
+	if(inputBuffer[1] == 0x00) {
+	if (debug) Serial.println("Loaded Public Key X Component Successfully");
+	//return true;   // If we hear a "0x00", that means it had a successful write
+	}
 
+	//Now Write second 32 bytes of public key to slot 10
+	sendCommand(COMMAND_OPCODE_WRITE, WRITE_DATA_32, ADDRESS_DATA_READ_SLOT10_BLOCK_1, public_y, 32);
+	delay(100);
+	if(receiveResponseData(4) == false) return false;
+	idleMode();
+	if(checkCount() == false) return false;
+	if(checkCrc() == false) return false;
+	if(inputBuffer[1] == 0x00) {
+	if (debug) Serial.println("Loaded Public Key Y Component Successfully");
+	return true;   // If we hear a "0x00", that means it had a successful write
+	}
+	else return false;
+}
 
+boolean ATECCX08A::readPublicKey(boolean debug)
+{
+  // read block 0, the first 32 bytes of slot10 into inputBuffer
+  read(ZONE_DATA, ADDRESS_DATA_READ_SLOT10_BLOCK_0, 32); 
+  // copy current contents of inputBuffer into storedPublicKey[] (for later viewing/comparing)
+  memcpy(&storedPublicKey[0], &inputBuffer[1], 32);
+
+  // read block 0, the first 32 bytes of slot10 into inputBuffer
+  read(ZONE_DATA, ADDRESS_DATA_READ_SLOT10_BLOCK_1, 32); 
+  // copy current contents of inputBuffer into storedPublicKey[] (for later viewing/comparing)
+  memcpy(&storedPublicKey[32], &inputBuffer[1], 32);
+
+  if(debug)
+  {
+    Serial.println("storedPublicKey: ");
+    for (int i = 0; i < sizeof(storedPublicKey) ; i++)
+    {
+      Serial.print(i);
+    Serial.print(": 0x");
+    if((storedPublicKey[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
+    Serial.print(storedPublicKey[i], HEX); 
+    Serial.print(" \t0b");
+    for(int bit = 7; bit >= 0; bit--) Serial.print(bitRead(storedPublicKey[i],bit)); // print binary WITH preceding '0' bits
+    Serial.println();
+    }
+    Serial.println();
+  }
+}
 
 
 
