@@ -88,6 +88,7 @@
 #define ECDH_OUTPUT_IN_SLOT			0b00000000
 #define ECDH_OUTPUT_IN_TEMPKEY		0b00001000
 #define AES_ECB_ENCRYPT				0b00000000
+#define AES_ECB_DECRYPT				0b00000001
 #define WRITE_DATA_32				0b10000010
 #define READ_DATA_32				0b10000010
 
@@ -168,7 +169,8 @@ class ATECCX08A {
 	boolean readConfigZone(bool debug = false);
 	boolean sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t param2, uint8_t *data = NULL, size_t length_of_data = 0);
 	boolean ECDH(uint8_t *data, uint8_t mode, uint16_t slot, bool debug = false);
-	boolean AES_ECB(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
+	boolean AES_ECB_encrypt(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
+	boolean AES_ECB_decrypt(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
 	boolean writeProvisionConfig();
 	boolean loadPublicKey(uint8_t *data, bool debug = false);
 	boolean readPublicKey(bool debug = false);

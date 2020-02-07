@@ -1018,12 +1018,12 @@ boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot, boolean debu
   if(checkCount() == false) return false;
   if(checkCrc() == false) return false;
   if(inputBuffer[1] == 0x00) {
-  Serial.println("Succesfully Calculated ECDH Shared Secret and Loaded into TempKey");
+  if(debug) Serial.println("Succesfully Calculated ECDH Shared Secret and Loaded into TempKey");
   }
   else return false;
 }
   
-boolean ATECCX08A::AES_ECB(uint8_t *data, uint16_t slot, boolean debug)
+boolean ATECCX08A::AES_ECB_encrypt(uint8_t *data, uint16_t slot, boolean debug)
 {
 	sendCommand(COMMAND_OPCODE_AES_ECB, AES_ECB_ENCRYPT, slot, data, 16);
 	delay(100);
@@ -1040,7 +1040,7 @@ boolean ATECCX08A::AES_ECB(uint8_t *data, uint16_t slot, boolean debug)
     {
       AES_buffer[i] = inputBuffer[i + 1];
     }
-  
+  if(debug){
   Serial.println();
     Serial.println("uint8_t AES_buffer[16] = {");
     for (int i = 0; i < sizeof(AES_buffer) ; i++)
@@ -1052,6 +1052,43 @@ boolean ATECCX08A::AES_ECB(uint8_t *data, uint16_t slot, boolean debug)
     if((15-i) % 16 == 0) Serial.println();
     }
   Serial.println("};");
+  }
+  return true;
+  }
+  else return false;
+
+}
+
+boolean ATECCX08A::AES_ECB_decrypt(uint8_t *data, uint16_t slot, boolean debug)
+{
+  sendCommand(COMMAND_OPCODE_AES_ECB, AES_ECB_DECRYPT, slot, data, 16);
+  delay(100);
+
+  if(receiveResponseData(19) == false) return false;  
+  idleMode();
+  boolean checkCountResult = checkCount();
+  boolean checkCrcResult = checkCrc();
+
+  if(checkCountResult && checkCrcResult) // check that it was a good message
+  {  
+    // we don't need the count value (which is currently the first byte of the inputBuffer)
+    for (int i = 0 ; i < 16 ; i++) // for loop through to grab all but the first position (which is "count" of the message)
+    {
+      AES_buffer[i] = inputBuffer[i + 1];
+    }
+  if(debug){
+  Serial.println();
+    Serial.println("uint8_t AES_buffer[16] = {");
+    for (int i = 0; i < sizeof(AES_buffer) ; i++)
+    {
+    Serial.print("0x");
+    if((AES_buffer[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
+      Serial.print(AES_buffer[i], HEX);
+      if(i != 15) Serial.print(", ");
+    if((15-i) % 16 == 0) Serial.println();
+    }
+  Serial.println("};");
+  }
   return true;
   }
   else return false;
