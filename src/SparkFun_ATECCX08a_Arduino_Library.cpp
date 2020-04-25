@@ -1013,13 +1013,39 @@ boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot, boolean debu
   delay(100); // time for IC to process command and exectute
 
   // Now let's read back from the IC.
-  if(receiveResponseData(4) == false) return false;  
+  if (mode == ECDH_OUTPUT_IN_TEMPKEY){
+    if(receiveResponseData(4) == false) return false;
+    }
+  if (mode == ECDH_OUTPUT_IN_CLEAR){
+    if(receiveResponseData(35) == false) return false;
+    }
   idleMode();
   if(checkCount() == false) return false;
   if(checkCrc() == false) return false;
+
   if(inputBuffer[1] == 0x00) {
-  if(debug) Serial.println("Succesfully Calculated ECDH Shared Secret and Loaded into TempKey");
+  if(debug == true && mode == ECDH_OUTPUT_IN_TEMPKEY) Serial.println("Succesfully Calculated ECDH Shared Secret and Loaded into TempKey");
   }
+  if (mode == ECDH_OUTPUT_IN_CLEAR){
+  //copy current contents of inputBuffer into ECDH_secret[] (for later viewing/comparing)
+    for (int i = 0 ; i < 32 ; i++) // for loop through to grab all but the first position (which is "count" of the message)
+    {
+      ECDH_secret[i] = inputBuffer[i + 1];
+    }
+    if (debug){
+      //print out secret
+      Serial.println("ECDH_secret: ");
+      for (int i = 0; i < sizeof(ECDH_secret) ; i++){
+        Serial.print("0x");
+        if((ECDH_secret[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
+        Serial.print(ECDH_secret[i], HEX); 
+        Serial.print(",");
+        if((sizeof(ECDH_secret)-i) % 16 == 0 && i != 0) Serial.println();
+        }
+      Serial.println();
+    }
+  }
+
   else return false;
 }
   
@@ -1187,13 +1213,11 @@ boolean ATECCX08A::readPublicKey(boolean debug)
     Serial.println("storedPublicKey: ");
     for (int i = 0; i < sizeof(storedPublicKey) ; i++)
     {
-      Serial.print(i);
-    Serial.print(": 0x");
+    Serial.print("0x");
     if((storedPublicKey[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
     Serial.print(storedPublicKey[i], HEX); 
-    Serial.print(" \t0b");
-    for(int bit = 7; bit >= 0; bit--) Serial.print(bitRead(storedPublicKey[i],bit)); // print binary WITH preceding '0' bits
-    Serial.println();
+    Serial.print(",");
+    if((sizeof(storedPublicKey)-i) % 16 == 0 && i != 0) Serial.println();
     }
     Serial.println();
   }
