@@ -30,16 +30,9 @@
 #endif
 
 
-#if defined(__IMXRT1062__)
-#include <i2c_driver_wire.h>
-//#include <Wire.h>
+#include "Wire.h"
 
-#endif
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
-#include "i2c_t3.h"
-#endif
-
-#define ATECC608A_ADDRESS_DEFAULT 0x60 //7-bit unshifted default I2C Address
+#define ATECC508A_ADDRESS_DEFAULT 0x60 //7-bit unshifted default I2C Address
 // 0x60 on a fresh chip. note, this is software definable
 
 // WORD ADDRESS VALUES
@@ -60,9 +53,6 @@
 #define COMMAND_OPCODE_NONCE 	0x16 // 
 #define COMMAND_OPCODE_SIGN 	0x41 // Create an ECC signature with contents of TempKey and designated key slot
 #define COMMAND_OPCODE_VERIFY 	0x45 // takes an ECDSA <R,S> signature and verifies that it is correctly generated from a given message and public key
-#define COMMAND_OPCODE_ECDH		0x43 // ECDH pre-master
-#define COMMAND_OPCODE_AES_ECB	0x51 // AES_ECB 
-
 
 // Lock command PARAM1 zone options (aka Mode). more info at table on datasheet page 75
 // 		? _ _ _  _ _ _ _ 	Bits 7 verify zone summary, 1 = ignore summary and write to zone!
@@ -84,13 +74,6 @@
 #define VERIFY_MODE_STORED			0b00000000 // Use an internally stored public key for verification, param2 = keyID, ds pg 89
 #define VERIFY_PARAM2_KEYTYPE_ECC 	0x0004 // When verify mode external, param2 should be KeyType, ds pg 89
 #define VERIFY_PARAM2_KEYTYPE_NONECC 	0x0007 // When verify mode external, param2 should be KeyType, ds pg 89
-#define ECDH_OUTPUT_IN_CLEAR		0b00001100
-#define ECDH_OUTPUT_IN_SLOT			0b00000000
-#define ECDH_OUTPUT_IN_TEMPKEY		0b00001000
-#define AES_ECB_ENCRYPT				0b00000000
-#define AES_ECB_DECRYPT				0b00000001
-#define WRITE_DATA_32				0b10000010
-#define READ_DATA_32				0b10000010
 
 #define ZONE_CONFIG 0x00
 #define ZONE_OTP 0x01
@@ -100,32 +83,44 @@
 #define ADDRESS_CONFIG_READ_BLOCK_1 0x0008 // 00000000 00001000 // param2 (byte 0), address block bits: _ _ _ 0  1 _ _ _ 
 #define ADDRESS_CONFIG_READ_BLOCK_2 0x0010 // 00000000 00010000 // param2 (byte 0), address block bits: _ _ _ 1  0 _ _ _ 
 #define ADDRESS_CONFIG_READ_BLOCK_3 0x0018 // 00000000 00011000 // param2 (byte 0), address block bits: _ _ _ 1  1 _ _ _ 
+<<<<<<< Updated upstream
+=======
 #define ADDRESS_DATA_READ_SLOT10_BLOCK_0	0x0050
 #define ADDRESS_DATA_READ_SLOT10_BLOCK_1	0x0150
+#define ADDRESS_DATA_SLOT8_BLOCK_0	0x0040
+#define ADDRESS_DATA_SLOT8_BLOCK_1	0x0140
+#define ADDRESS_DATA_SLOT8_BLOCK_2	0x0240
+#define ADDRESS_DATA_SLOT8_BLOCK_3	0x0340
+>>>>>>> Stashed changes
 
 class ATECCX08A {
   public:
+  
     //By default use Wire, standard I2C speed, and the default ADS1015 address
-	#if defined(__IMXRT1062__)
-	boolean begin(uint8_t i2caddr = ATECC608A_ADDRESS_DEFAULT, TwoWire &wirePort = Wire);
-	#endif
-	#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
-	boolean begin(uint8_t i2caddr = ATECC608A_ADDRESS_DEFAULT, i2c_t3 &wirePort = Wire);
+	#if defined(ARDUINO_ARCH_APOLLO3) // checking which board we are using and selecting a Serial debug that will work.
+	boolean begin(uint8_t i2caddr = ATECC508A_ADDRESS_DEFAULT, TwoWire &wirePort = Wire, Stream &serialPort = Serial); // Artemis
+	#else
+	boolean begin(uint8_t i2caddr = ATECC508A_ADDRESS_DEFAULT, TwoWire &wirePort = Wire, Stream &serialPort = SerialUSB);  // SamD21 boards
 	#endif
 	
+<<<<<<< Updated upstream
+	byte inputBuffer[128]; // used to store messages received from the IC as they come in
+	byte configZone[128]; // used to store configuration zone bytes read from device EEPROM
+=======
 	uint8_t inputBuffer[128]; // used to store messages received from the IC as they come in
 	uint8_t configZone[128]; // used to store configuration zone bytes read from device EEPROM
 	uint8_t storedPublicKey[64];
+	uint8_t storedRSAKey[270];
+>>>>>>> Stashed changes
 	uint8_t revisionNumber[5]; // used to store the complete revision number, pulled from configZone[4-7]
-	uint8_t serialNumber[9]; // used to store the complete Serial number, pulled from configZone[0-3] and configZone[8-12]
+	uint8_t serialNumber[10]; // used to store the complete Serial number, pulled from configZone[0-3] and configZone[8-12]
 	boolean configLockStatus; // pulled from configZone[87], then set according to status (0x55=UNlocked, 0x00=Locked)
 	boolean dataOTPLockStatus; // pulled from configZone[86], then set according to status (0x55=UNlocked, 0x00=Locked)
 	boolean slot0LockStatus; // pulled from configZone[88], then set according to slot (bit 0) status
 	
-	uint8_t publicKey64Bytes[64]; // used to store the public key returned when you (1) create a keypair, or (2) read a public key
+	byte publicKey64Bytes[64]; // used to store the public key returned when you (1) create a keypair, or (2) read a public key
 	uint8_t signature[64];
-	uint8_t ECDH_secret[32];
-	uint8_t AES_buffer[16];
+	
 	boolean receiveResponseData(uint8_t length = 0, boolean debug = false);
 	boolean checkCount(boolean debug = false);
 	boolean checkCrc(boolean debug = false);
@@ -139,15 +134,14 @@ class ATECCX08A {
 	boolean lockConfig(); // note, this PERMINANTLY disables changes to config zone - including changing the I2C address!
 	boolean lockDataAndOTP();
 	boolean lockDataSlot0();
-	boolean lockDataSlot(int slot);
 	boolean lock(uint8_t zone);
 	
 	// Random array and fuctions
-	uint8_t random32Bytes[32]; // used to store the complete data return (32 bytes) when we ask for a random number from chip.
-	boolean updateRandom32Bytes(bool debug = false);
-	uint8_t getRandomByte(bool debug = false);
-	int getRandomInt(bool debug = false);
-	long getRandomLong(bool debug = false);
+	byte random32Bytes[32]; // used to store the complete data return (32 bytes) when we ask for a random number from chip.
+	boolean updateRandom32Bytes(boolean debug = false);
+	byte getRandomByte(boolean debug = false);
+	int getRandomInt(boolean debug = false);
+	long getRandomLong(boolean debug = false);
 	long random(long max);
 	long random(long min, long max);
 	
@@ -155,35 +149,37 @@ class ATECCX08A {
 	void atca_calculate_crc(uint8_t length, uint8_t *data);	
 	
 	// Key functions
-	boolean createNewKeyPair(uint16_t slot = 0x0000, bool debug = false);
-	boolean generatePublicKey(uint16_t slot = 0x0000, bool debug = false);
+	boolean createNewKeyPair(uint16_t slot = 0x0000);
+	boolean generatePublicKey(uint16_t slot = 0x0000, boolean debug = true);
 	
-	boolean createSignature(uint8_t *data, uint16_t slot = 0x0000, bool debug = false); 
-	boolean loadTempKey(uint8_t *data, bool debug = false);  // load 32 bytes of data into tempKey (a temporary memory spot in the IC)
-	boolean signTempKey(uint16_t slot = 0x0000, bool debug = false); // create signature using contents of TempKey and PRIVATE KEY in slot
-	boolean verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey, bool debug = false); // external ECC publicKey only
+	boolean createSignature(uint8_t *data, uint16_t slot = 0x0000); 
+	boolean loadTempKey(uint8_t *data);  // load 32 bytes of data into tempKey (a temporary memory spot in the IC)
+	boolean signTempKey(uint16_t slot = 0x0000); // create signature using contents of TempKey and PRIVATE KEY in slot
+	boolean verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey); // external ECC publicKey only
 
-	boolean read(uint8_t zone, uint16_t address, uint8_t length, bool debug = false);
+	boolean read(uint8_t zone, uint16_t address, uint8_t length, boolean debug = false);
 	boolean write(uint8_t zone, uint16_t address, uint8_t *data, uint8_t length_of_data);
 
-	boolean readConfigZone(bool debug = false);
+	boolean readConfigZone(boolean debug = true);
 	boolean sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t param2, uint8_t *data = NULL, size_t length_of_data = 0);
+<<<<<<< Updated upstream
+	
+=======
 	boolean ECDH(uint8_t *data, uint8_t mode, uint16_t slot, bool debug = false);
 	boolean AES_ECB_encrypt(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
 	boolean AES_ECB_decrypt(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
 	boolean writeProvisionConfig();
 	boolean loadPublicKey(uint8_t *data, bool debug = false);
 	boolean readPublicKey(bool debug = false);
+	boolean readRSAKey(bool debug = false);
+>>>>>>> Stashed changes
   private:
 
-	#if defined(__IMXRT1062__)
 	TwoWire *_i2cPort;
-	#endif
-	#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
-	i2c_t3 *_i2cPort;
-	#endif
 
 	uint8_t _i2caddr;
+	
+	Stream *_debugSerial; //The generic connection to user's chosen serial hardware
 	
 };
 

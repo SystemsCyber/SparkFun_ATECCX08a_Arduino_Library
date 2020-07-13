@@ -21,11 +21,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "SparkFun_ATECCX08A_Arduino_Library.h"
+#include "SparkFun_ATECCX08a_Arduino_Library.h"
 
 /** \brief 
 
-	begin(uint8_t i2caddr, TwoWire &wirePort)
+	begin(uint8_t i2caddr, TwoWire &wirePort, Stream &serialPort)
 	
 	returns false if IC does not respond,
 	returns true if wake() function is successful
@@ -36,15 +36,12 @@
 	for the same purpose.
 */
 
-#if defined(__IMXRT1062__)
-boolean ATECCX08A::begin(uint8_t i2caddr, TwoWire &wirePort)
-#endif
-#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
-boolean ATECCX08A::begin(uint8_t i2caddr, i2c_t3 &wirePort)
-#endif
+boolean ATECCX08A::begin(uint8_t i2caddr, TwoWire &wirePort, Stream &serialPort)
 {
   //Bring in the user's choices
   _i2cPort = &wirePort; //Grab which port the user wants us to use
+  
+  _debugSerial = &serialPort; //Grab which port the user wants us to use
 
   _i2caddr = i2caddr;
 
@@ -191,18 +188,18 @@ boolean ATECCX08A::readConfigZone(boolean debug)
   
   if(debug)
   {
-    Serial.println("configZone: ");
+    _debugSerial->println("configZone: ");
     for (int i = 0; i < sizeof(configZone) ; i++)
     {
-      Serial.print(i);
-	  Serial.print(": 0x");
-	  if((configZone[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
-	  Serial.print(configZone[i], HEX); 
-	  Serial.print(" \t0b");
-	  for(int bit = 7; bit >= 0; bit--) Serial.print(bitRead(configZone[i],bit)); // print binary WITH preceding '0' bits
-	  Serial.println();
+      _debugSerial->print(i);
+	  _debugSerial->print(": 0x");
+	  if((configZone[i] >> 4) == 0) _debugSerial->print("0"); // print preceeding high nibble if it's zero
+	  _debugSerial->print(configZone[i], HEX); 
+	  _debugSerial->print(" \t0b");
+	  for(int bit = 7; bit >= 0; bit--) _debugSerial->print(bitRead(configZone[i],bit)); // print binary WITH preceding '0' bits
+	  _debugSerial->println();
     }
-    Serial.println();
+    _debugSerial->println();
   }
   
   
@@ -261,31 +258,6 @@ boolean ATECCX08A::lock(uint8_t zone)
 
 /** \brief
 
-	lockDataSlot(byte zone)
-	
-	This function sends the LOCK Command using the argument zone as parameter 1, 
-	and listens for success response (0x00).
-*/
-
-boolean ATECCX08A::lockDataSlot(int slot)
-{
-  uint8_t zone = (slot << 2) | 0b10000010;
-  sendCommand(COMMAND_OPCODE_LOCK, zone, 0x0000);
-
-  delay(32); // time for IC to process command and exectute
-  
-  // Now let's read back from the IC and see if it reports back good things.
-  countGlobal = 0; 
-  if(receiveResponseData(4) == false) return false;
-  idleMode();
-  if(checkCount() == false) return false;
-  if(checkCrc() == false) return false;
-  if(inputBuffer[1] == 0x00) return true;   // If we hear a "0x00", that means it had a successful lock
-  else return false;
-}
-
-/** \brief
-
 	updateRandom32Bytes(boolean debug)
 	
     This function pulls a complete random number (all 32 bytes)
@@ -322,13 +294,13 @@ boolean ATECCX08A::updateRandom32Bytes(boolean debug)
 
   if(debug)
   {
-    Serial.print("random32Bytes: ");
+    _debugSerial->print("random32Bytes: ");
     for (int i = 0; i < sizeof(random32Bytes) ; i++)
     {
-      Serial.print(random32Bytes[i], HEX);
-      Serial.print(",");
+      _debugSerial->print(random32Bytes[i], HEX);
+      _debugSerial->print(",");
     }
-    Serial.println();
+    _debugSerial->println();
   }
   
   return true;
@@ -468,13 +440,13 @@ boolean ATECCX08A::receiveResponseData(uint8_t length, boolean debug)
 
   if(debug)
   {
-    Serial.print("inputBuffer: ");
+    _debugSerial->print("inputBuffer: ");
 	for (int i = 0; i < countGlobal ; i++)
 	{
-	  Serial.print(inputBuffer[i], HEX);
-	  Serial.print(",");
+	  _debugSerial->print(inputBuffer[i], HEX);
+	  _debugSerial->print(",");
 	}
-	Serial.println();	  
+	_debugSerial->println();	  
   }
   return true;
 }
@@ -492,16 +464,28 @@ boolean ATECCX08A::checkCount(boolean debug)
 {
   if(debug)
   {
+<<<<<<< Updated upstream
+    _debugSerial->print("countGlobal: 0x");
+	_debugSerial->println(countGlobal, HEX);
+	_debugSerial->print("count heard from IC (inpuBuffer[0]): 0x");
+    _debugSerial->println(inputBuffer[0], HEX);
+=======
     Serial.print("countGlobal: 0x");
-	Serial.println(countGlobal, HEX);
-	Serial.print("count heard from IC (inpuBuffer[0]): 0x");
+	  Serial.println(countGlobal, HEX);
+	  Serial.print("count heard from IC (inpuBuffer[0]): 0x");
     Serial.println(inputBuffer[0], HEX);
+>>>>>>> Stashed changes
   }
   // Check count; the first byte sent from IC is count, and it should be equal to the actual message count
   if(inputBuffer[0] != countGlobal) 
   {
-	if(debug) Serial.println("Message Count Error");
+<<<<<<< Updated upstream
+	if(debug) _debugSerial->println("Message Count Error");
 	return false;
+=======
+	   if(debug) Serial.println("Message Count Error");
+	   return false;
+>>>>>>> Stashed changes
   }  
   return true;
 }
@@ -522,15 +506,15 @@ boolean ATECCX08A::checkCrc(boolean debug)
   
   if(debug)
   {
-    Serial.print("CRC[0] Calc: 0x");
-	Serial.println(crc[0], HEX);
-	Serial.print("CRC[1] Calc: 0x");
-    Serial.println(crc[1], HEX);
+    _debugSerial->print("CRC[0] Calc: 0x");
+	_debugSerial->println(crc[0], HEX);
+	_debugSerial->print("CRC[1] Calc: 0x");
+    _debugSerial->println(crc[1], HEX);
   }
   
   if( (inputBuffer[countGlobal-1] != crc[1]) || (inputBuffer[countGlobal-2] != crc[0]) )   // then check the CRCs.
   {
-	if(debug) Serial.println("Message CRC Error");
+	if(debug) _debugSerial->println("Message CRC Error");
 	return false;
   }
   
@@ -596,7 +580,7 @@ void ATECCX08A::cleanInputBuffer()
 	Sparkfun Default Configuration Sketch calls this, and then locks the data/otp zones and slot 0.
 */
 
-boolean ATECCX08A::createNewKeyPair(uint16_t slot, boolean debug)
+boolean ATECCX08A::createNewKeyPair(uint16_t slot)
 {  
   sendCommand(COMMAND_OPCODE_GENKEY, GENKEY_MODE_NEW_PRIVATE, slot);
 
@@ -662,19 +646,19 @@ boolean ATECCX08A::generatePublicKey(uint16_t slot, boolean debug)
 	
 	if(debug)
 	{
-		Serial.println("This device's Public Key:");
-		Serial.println();
-		Serial.println("uint8_t publicKey[64] = {");
+		_debugSerial->println("This device's Public Key:");
+		_debugSerial->println();
+		_debugSerial->println("uint8_t publicKey[64] = {");
 		for (int i = 0; i < sizeof(publicKey64Bytes) ; i++)
 		{
-		  Serial.print("0x");
-		  if((publicKey64Bytes[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
-		  Serial.print(publicKey64Bytes[i], HEX);
-		  if(i != 63) Serial.print(", ");
-		  if((63-i) % 16 == 0) Serial.println();
+		  _debugSerial->print("0x");
+		  if((publicKey64Bytes[i] >> 4) == 0) _debugSerial->print("0"); // print preceeding high nibble if it's zero
+		  _debugSerial->print(publicKey64Bytes[i], HEX);
+		  if(i != 63) _debugSerial->print(", ");
+		  if((63-i) % 16 == 0) _debugSerial->println();
 		}
-		Serial.println("};");
-		Serial.println();
+		_debugSerial->println("};");
+		_debugSerial->println();
 	}
 	return true;
   }
@@ -712,7 +696,7 @@ boolean ATECCX08A::read(uint8_t zone, uint16_t address, uint8_t length, boolean 
 
   sendCommand(COMMAND_OPCODE_READ, zone, address);
   
-  delay(1); // time for IC to process command and exectute
+  delay(10); // time for IC to process command and exectute
 
   // Now let's read back from the IC. 
   
@@ -779,18 +763,10 @@ boolean ATECCX08A::write(uint8_t zone, uint16_t address, uint8_t *data, uint8_t 
 	receives the signature and copies it to signature[].
 */
 
-boolean ATECCX08A::createSignature(uint8_t *data, uint16_t slot, bool debug)
+boolean ATECCX08A::createSignature(uint8_t *data, uint16_t slot)
 {
   boolean loadTempKeyResult = loadTempKey(data);
-  if (debug) {
-    Serial.print("loadTempKeyResult: ");
-    Serial.println(loadTempKeyResult);
-  }
-  boolean signTempKeyResult = signTempKey(slot, debug);
-  if (debug) {
-    Serial.print("signTempKeyResult: ");
-    Serial.println(signTempKeyResult);
-  }
+  boolean signTempKeyResult = signTempKey(slot);
   if(loadTempKeyResult && signTempKeyResult) return true;
   else return false;
 }
@@ -809,7 +785,7 @@ boolean ATECCX08A::createSignature(uint8_t *data, uint16_t slot, bool debug)
     when it requests data, and this will allow us to create a unique data + signature for every communication.
 */
 
-boolean ATECCX08A::loadTempKey(uint8_t *data, boolean debug)
+boolean ATECCX08A::loadTempKey(uint8_t *data)
 {
   sendCommand(COMMAND_OPCODE_NONCE, NONCE_MODE_PASSTHROUGH, 0x0000, data, 32);
   
@@ -841,17 +817,17 @@ boolean ATECCX08A::loadTempKey(uint8_t *data, boolean debug)
 	The response from this command (the signature) is stored in global varaible signature[].
 */
 
-boolean ATECCX08A::signTempKey(uint16_t slot, bool debug)
+boolean ATECCX08A::signTempKey(uint16_t slot)
 {
   sendCommand(COMMAND_OPCODE_SIGN, SIGN_MODE_TEMPKEY, slot);
 
-  delay(100); // time for IC to process command and exectute
+  delay(60); // time for IC to process command and exectute
 
   // Now let's read back from the IC.
-
+  
   if(receiveResponseData(64 + 2 + 1) == false) return false; // signature (64), plus crc (2), plus count (1)
   idleMode();
-  boolean checkCountResult =  checkCount();
+  boolean checkCountResult = checkCount();
   boolean checkCrcResult = checkCrc();
   
   // update signature[] array and print it to serial terminal nicely formatted for easy copy/pasting between sketches
@@ -862,15 +838,18 @@ boolean ATECCX08A::signTempKey(uint16_t slot, bool debug)
     {
       signature[i] = inputBuffer[i + 1];
     }
-  if (debug){
-    Serial.print("signature = [");
+  
+	_debugSerial->println();
+    _debugSerial->println("uint8_t signature[64] = {");
     for (int i = 0; i < sizeof(signature) ; i++)
     {
-      Serial.printf("0x%02X",signature[i]);
-      if (i != 63) Serial.print(", ");
+	  _debugSerial->print("0x");
+	  if((signature[i] >> 4) == 0) _debugSerial->print("0"); // print preceeding high nibble if it's zero
+      _debugSerial->print(signature[i], HEX);
+      if(i != 63) _debugSerial->print(", ");
+	  if((63-i) % 16 == 0) _debugSerial->println();
     }
-    Serial.println("]");
-  }
+	_debugSerial->println("};");
 	return true;
   }
   else return false;
@@ -886,13 +865,13 @@ boolean ATECCX08A::signTempKey(uint16_t slot, bool debug)
 	Note, it acutally uses loadTempKey, then uses the verify command in "external public key" mode.
 */
 
-boolean ATECCX08A::verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey, boolean debug)
+boolean ATECCX08A::verifySignature(uint8_t *message, uint8_t *signature, uint8_t *publicKey)
 {
   // first, let's load the message into TempKey on the device, this uses NONCE command in passthrough mode.
   boolean loadTempKeyResult = loadTempKey(message);
   if(loadTempKeyResult == false) 
   {
-    Serial.println("Load TempKey Failure");
+    _debugSerial->println("Load TempKey Failure");
     return false;
   }
 
@@ -940,7 +919,7 @@ boolean ATECCX08A::writeConfigSparkFun()
   result1 = write(ZONE_CONFIG, (96 / 4), data1, 4);
   // set slot config on slot 0 and 1 to 0x8320
   // EXT signatures, INT signatures, IsSecret, Write config never
-  uint8_t data2[] = {0x87, 0x20, 0x8F, 0x20}; // for slot config bit definitions see datasheet pg 20
+  uint8_t data2[] = {0x83, 0x20, 0x83, 0x20}; // for slot config bit definitions see datasheet pg 20
   result2 = write(ZONE_CONFIG, (20 / 4), data2, 4);
   
   return (result1 && result2);
@@ -967,7 +946,7 @@ boolean ATECCX08A::sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t 
   // It expects to see: word address, count, command opcode, param1, param2, data (optional), CRC[0], CRC[1]
   
   uint8_t total_transmission_length;
-  total_transmission_length = (1 + 1 + 1 + 1 + 2 + length_of_data + 2); 
+  total_transmission_length = (1 +1 +1 +1 +2 +length_of_data +2); 
   // word address val (1) + count (1) + command opcode (1) param1 (1) + param2 (2) data (0-?) + crc (2)
 
   uint8_t total_transmission[total_transmission_length];
@@ -982,17 +961,17 @@ boolean ATECCX08A::sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t 
   uint8_t packet_to_CRC[total_transmission_length-3]; // minus word address (1) and crc (2).
   memcpy(&packet_to_CRC[0], &total_transmission[1], (total_transmission_length-3)); // copy over just what we need to CRC starting at index 1
   
-  //  Serial.println("packet_to_CRC: ");
+  //  _debugSerial->println("packet_to_CRC: ");
   //  for (int i = 0; i < sizeof(packet_to_CRC) ; i++)
   //  {
-  //  Serial.print(packet_to_CRC[i], HEX);
-  //  Serial.print(",");
+  //  _debugSerial->print(packet_to_CRC[i], HEX);
+  //  _debugSerial->print(",");
   //  }
-  //  Serial.println();
+  //  _debugSerial->println();
   
   atca_calculate_crc((total_transmission_length-3), packet_to_CRC); // count includes crc[0] and crc[1], so we must subtract 2 before creating crc
-  //Serial.println(crc[0], HEX);
-  //Serial.println(crc[1], HEX);
+  //_debugSerial->println(crc[0], HEX);
+  //_debugSerial->println(crc[1], HEX);
 
   memcpy(&total_transmission[total_transmission_length-2], &crc[0], 2);  // append crcs
 
@@ -1005,6 +984,10 @@ boolean ATECCX08A::sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t 
   return true;
 }
 
+<<<<<<< Updated upstream
+
+
+=======
 boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot, boolean debug)
 {
   sendCommand(COMMAND_OPCODE_ECDH, mode, slot, data, 64);
@@ -1013,39 +996,13 @@ boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot, boolean debu
   delay(100); // time for IC to process command and exectute
 
   // Now let's read back from the IC.
-  if (mode == ECDH_OUTPUT_IN_TEMPKEY){
-    if(receiveResponseData(4) == false) return false;
-    }
-  if (mode == ECDH_OUTPUT_IN_CLEAR){
-    if(receiveResponseData(35) == false) return false;
-    }
+  if(receiveResponseData(4) == false) return false;  
   idleMode();
   if(checkCount() == false) return false;
   if(checkCrc() == false) return false;
-
   if(inputBuffer[1] == 0x00) {
-  if(debug == true && mode == ECDH_OUTPUT_IN_TEMPKEY) Serial.println("Succesfully Calculated ECDH Shared Secret and Loaded into TempKey");
+  if(debug) Serial.println("Succesfully Calculated ECDH Shared Secret and Loaded into TempKey");
   }
-  if (mode == ECDH_OUTPUT_IN_CLEAR){
-  //copy current contents of inputBuffer into ECDH_secret[] (for later viewing/comparing)
-    for (int i = 0 ; i < 32 ; i++) // for loop through to grab all but the first position (which is "count" of the message)
-    {
-      ECDH_secret[i] = inputBuffer[i + 1];
-    }
-    if (debug){
-      //print out secret
-      Serial.println("ECDH_secret: ");
-      for (int i = 0; i < sizeof(ECDH_secret) ; i++){
-        Serial.print("0x");
-        if((ECDH_secret[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
-        Serial.print(ECDH_secret[i], HEX); 
-        Serial.print(",");
-        if((sizeof(ECDH_secret)-i) % 16 == 0 && i != 0) Serial.println();
-        }
-      Serial.println();
-    }
-  }
-
   else return false;
 }
   
@@ -1087,14 +1044,27 @@ boolean ATECCX08A::AES_ECB_encrypt(uint8_t *data, uint16_t slot, boolean debug)
 
 boolean ATECCX08A::AES_ECB_decrypt(uint8_t *data, uint16_t slot, boolean debug)
 {
+  if(debug) Serial.println("Sending COMMAND_OPCODE_AES_ECB.");
+  
   sendCommand(COMMAND_OPCODE_AES_ECB, AES_ECB_DECRYPT, slot, data, 16);
   delay(100);
 
-  if(receiveResponseData(19) == false) return false;  
-  idleMode();
-  boolean checkCountResult = checkCount();
-  boolean checkCrcResult = checkCrc();
 
+  
+  if(receiveResponseData(19,debug) == false) {
+    if(debug) Serial.println("receiveResponseData(19) == false");
+    return false;  
+  }
+  if(debug) Serial.println("receiveResponseData(19) == true, going to idle mode.");
+
+  idleMode();
+  if(debug) Serial.println("Done with Idle Mode.");
+  boolean checkCountResult = checkCount(debug);
+  if(debug) Serial.println("Checked Count.");
+  boolean checkCrcResult = checkCrc(debug);
+  if(debug) Serial.println("Checked CRC.");
+  
+  
   if(checkCountResult && checkCrcResult) // check that it was a good message
   {  
     // we don't need the count value (which is currently the first byte of the inputBuffer)
@@ -1102,26 +1072,30 @@ boolean ATECCX08A::AES_ECB_decrypt(uint8_t *data, uint16_t slot, boolean debug)
     {
       AES_buffer[i] = inputBuffer[i + 1];
     }
-  if(debug){
-  Serial.println();
-    Serial.println("uint8_t AES_buffer[16] = {");
-    for (int i = 0; i < sizeof(AES_buffer) ; i++)
-    {
-    Serial.print("0x");
-    if((AES_buffer[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
-      Serial.print(AES_buffer[i], HEX);
-      if(i != 15) Serial.print(", ");
-    if((15-i) % 16 == 0) Serial.println();
+    if(debug){
+      Serial.println("uint8_t AES_buffer[16]:");
+      for (uint8_t i = 0; i < 16; i++){ 
+          char hex_digit[3];
+          sprintf(hex_digit,"%02X",AES_buffer[i]);
+          Serial.print(hex_digit);
+      }
+      Serial.println();
+      delay(10);
     }
-  Serial.println("};");
-  }
   return true;
   }
-  else return false;
+  else 
+  {
+    if(debug) Serial.println("checkCountResult && checkCrcResult are false. Returning false.");
+    return false;
+  }
+>>>>>>> Stashed changes
 
-}
 
 
+<<<<<<< Updated upstream
+
+=======
 boolean ATECCX08A::writeProvisionConfig()
 {
   // keep track of our write command results.
@@ -1129,6 +1103,8 @@ boolean ATECCX08A::writeProvisionConfig()
   boolean result2;
   boolean result3;
   boolean result4;
+  boolean result5;
+  boolean result6;
 
   //The write command must send 4 or 32 bytes, so 2 or 16 slots have to be written at a time
   
@@ -1137,8 +1113,10 @@ boolean ATECCX08A::writeProvisionConfig()
   // Lockable, ECC, PuInfo set (public key always allowed to be generated), contains a private Key
   uint8_t data1[] = {0x33, 0x00, 0x33, 0x00}; // 0x3300 sets the keyconfig.keyType, see datasheet pg 20
   result1 = write(ZONE_CONFIG, (96 / 4), data1, 4);
+ 
   // set slot config on slot 0 and 1 to 0x8720
   // EXT signatures, INT signatures, IsSecret, Write config never, ECDH allowed
+  // Bit 13 is set so GenKey can use this key.
   uint8_t data2[] = {0x87, 0x20, 0x87, 0x20}; 
   result2 = write(ZONE_CONFIG, (20 / 4), data2, 4);
 
@@ -1155,8 +1133,20 @@ boolean ATECCX08A::writeProvisionConfig()
   uint8_t data4[] = {0x00, 0x20, 0x00, 0x20}; 
   result4 = write(ZONE_CONFIG, (40 / 4), data4, 4);
 
+  // set slot config on slot 8 and 9 
+  //slotconfig for slot 8: is not secret, not encryptread, no usage limitation, can be used by all commands, write config never
+  //slotconfig for slot 9: is not secret, not encryptread, no usage limitation, can be used by all commands, write config never
+  uint8_t data5[] = {0x0F, 0x0F, 0x0F, 0x0F};  
+  result5 = write(ZONE_CONFIG, (36 / 4), data5, 4);
 
-  return (result1 && result2 && result3 && result4);
+  // set keytype on slot 8 and 9 0x3C00
+  //keyconfig for slot 8: Lockable, Not an ECC key
+  //keyconfig for slot 9: Lockable, Not an ECC key
+  uint8_t data6[] = {0x3C, 0x00, 0x3C, 0x00}; 
+  result6 = write(ZONE_CONFIG, (110 / 4), data6, 4);
+
+
+  return (result1 && result2 && result3 && result4 && result5 && result6);
 }
 
 
@@ -1181,48 +1171,36 @@ boolean ATECCX08A::loadPublicKey(uint8_t *data, bool debug)
 	if (debug) Serial.println("Loaded Public Key X Component Successfully");
 	//return true;   // If we hear a "0x00", that means it had a successful write
 	}
+>>>>>>> Stashed changes
 
-	//Now Write second 32 bytes of public key to slot 10
-	sendCommand(COMMAND_OPCODE_WRITE, WRITE_DATA_32, ADDRESS_DATA_READ_SLOT10_BLOCK_1, public_y, 32);
-	delay(100);
-	if(receiveResponseData(4) == false) return false;
-	idleMode();
-	if(checkCount() == false) return false;
-	if(checkCrc() == false) return false;
-	if(inputBuffer[1] == 0x00) {
-	if (debug) Serial.println("Loaded Public Key Y Component Successfully");
-	return true;   // If we hear a "0x00", that means it had a successful write
-	}
-	else return false;
-}
 
-boolean ATECCX08A::readPublicKey(boolean debug)
+
+
+boolean ATECCX08A::readRSAKey(boolean debug)
 {
-  // read block 0, the first 32 bytes of slot10 into inputBuffer
-  read(ZONE_DATA, ADDRESS_DATA_READ_SLOT10_BLOCK_0, 32); 
-  // copy current contents of inputBuffer into storedPublicKey[] (for later viewing/comparing)
-  memcpy(&storedPublicKey[0], &inputBuffer[1], 32);
-
-  // read block 0, the first 32 bytes of slot10 into inputBuffer
-  read(ZONE_DATA, ADDRESS_DATA_READ_SLOT10_BLOCK_1, 32); 
-  // copy current contents of inputBuffer into storedPublicKey[] (for later viewing/comparing)
-  memcpy(&storedPublicKey[32], &inputBuffer[1], 32);
+  
+  for (int i = 0; i < sizeof(storedRSAKey); i += 32)
+  {
+      read(ZONE_DATA, ADDRESS_DATA_SLOT8_BLOCK_0+i, 32);
+      memcpy(&storedRSAKey[i], &inputBuffer[1], 32);
+  }
 
   if(debug)
   {
     Serial.println("storedPublicKey: ");
     for (int i = 0; i < sizeof(storedPublicKey) ; i++)
     {
-    Serial.print("0x");
+      Serial.print(i);
+    Serial.print(": 0x");
     if((storedPublicKey[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
     Serial.print(storedPublicKey[i], HEX); 
-    Serial.print(",");
-    if((sizeof(storedPublicKey)-i) % 16 == 0 && i != 0) Serial.println();
+    Serial.print(" \t0b");
+    for(int bit = 7; bit >= 0; bit--) Serial.print(bitRead(storedPublicKey[i],bit)); // print binary WITH preceding '0' bits
+    Serial.println();
     }
     Serial.println();
   }
 }
-
 
 
 
