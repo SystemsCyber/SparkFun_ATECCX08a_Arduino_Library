@@ -83,15 +83,12 @@
 #define ADDRESS_CONFIG_READ_BLOCK_1 0x0008 // 00000000 00001000 // param2 (byte 0), address block bits: _ _ _ 0  1 _ _ _ 
 #define ADDRESS_CONFIG_READ_BLOCK_2 0x0010 // 00000000 00010000 // param2 (byte 0), address block bits: _ _ _ 1  0 _ _ _ 
 #define ADDRESS_CONFIG_READ_BLOCK_3 0x0018 // 00000000 00011000 // param2 (byte 0), address block bits: _ _ _ 1  1 _ _ _ 
-<<<<<<< Updated upstream
-=======
 #define ADDRESS_DATA_READ_SLOT10_BLOCK_0	0x0050
 #define ADDRESS_DATA_READ_SLOT10_BLOCK_1	0x0150
 #define ADDRESS_DATA_SLOT8_BLOCK_0	0x0040
 #define ADDRESS_DATA_SLOT8_BLOCK_1	0x0140
 #define ADDRESS_DATA_SLOT8_BLOCK_2	0x0240
 #define ADDRESS_DATA_SLOT8_BLOCK_3	0x0340
->>>>>>> Stashed changes
 
 class ATECCX08A {
   public:
@@ -103,15 +100,10 @@ class ATECCX08A {
 	boolean begin(uint8_t i2caddr = ATECC508A_ADDRESS_DEFAULT, TwoWire &wirePort = Wire, Stream &serialPort = SerialUSB);  // SamD21 boards
 	#endif
 	
-<<<<<<< Updated upstream
-	byte inputBuffer[128]; // used to store messages received from the IC as they come in
-	byte configZone[128]; // used to store configuration zone bytes read from device EEPROM
-=======
 	uint8_t inputBuffer[128]; // used to store messages received from the IC as they come in
 	uint8_t configZone[128]; // used to store configuration zone bytes read from device EEPROM
 	uint8_t storedPublicKey[64];
 	uint8_t storedRSAKey[270];
->>>>>>> Stashed changes
 	uint8_t revisionNumber[5]; // used to store the complete revision number, pulled from configZone[4-7]
 	uint8_t serialNumber[10]; // used to store the complete Serial number, pulled from configZone[0-3] and configZone[8-12]
 	boolean configLockStatus; // pulled from configZone[87], then set according to status (0x55=UNlocked, 0x00=Locked)
@@ -162,9 +154,6 @@ class ATECCX08A {
 
 	boolean readConfigZone(boolean debug = true);
 	boolean sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t param2, uint8_t *data = NULL, size_t length_of_data = 0);
-<<<<<<< Updated upstream
-	
-=======
 	boolean ECDH(uint8_t *data, uint8_t mode, uint16_t slot, bool debug = false);
 	boolean AES_ECB_encrypt(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
 	boolean AES_ECB_decrypt(uint8_t *data, uint16_t slot = 0xFFFF, bool debug = false );
@@ -172,7 +161,6 @@ class ATECCX08A {
 	boolean loadPublicKey(uint8_t *data, bool debug = false);
 	boolean readPublicKey(bool debug = false);
 	boolean readRSAKey(bool debug = false);
->>>>>>> Stashed changes
   private:
 
 	TwoWire *_i2cPort;

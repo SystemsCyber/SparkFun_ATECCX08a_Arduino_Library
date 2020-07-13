@@ -464,28 +464,16 @@ boolean ATECCX08A::checkCount(boolean debug)
 {
   if(debug)
   {
-<<<<<<< Updated upstream
     _debugSerial->print("countGlobal: 0x");
-	_debugSerial->println(countGlobal, HEX);
-	_debugSerial->print("count heard from IC (inpuBuffer[0]): 0x");
+ 	  _debugSerial->println(countGlobal, HEX);
+ 	  _debugSerial->print("count heard from IC (inpuBuffer[0]): 0x");
     _debugSerial->println(inputBuffer[0], HEX);
-=======
-    Serial.print("countGlobal: 0x");
-	  Serial.println(countGlobal, HEX);
-	  Serial.print("count heard from IC (inpuBuffer[0]): 0x");
-    Serial.println(inputBuffer[0], HEX);
->>>>>>> Stashed changes
   }
   // Check count; the first byte sent from IC is count, and it should be equal to the actual message count
   if(inputBuffer[0] != countGlobal) 
   {
-<<<<<<< Updated upstream
 	if(debug) _debugSerial->println("Message Count Error");
 	return false;
-=======
-	   if(debug) Serial.println("Message Count Error");
-	   return false;
->>>>>>> Stashed changes
   }  
   return true;
 }
@@ -984,10 +972,7 @@ boolean ATECCX08A::sendCommand(uint8_t command_opcode, uint8_t param1, uint16_t 
   return true;
 }
 
-<<<<<<< Updated upstream
 
-
-=======
 boolean ATECCX08A::ECDH(uint8_t *data, uint8_t mode, uint16_t slot, boolean debug)
 {
   sendCommand(COMMAND_OPCODE_ECDH, mode, slot, data, 64);
@@ -1089,13 +1074,7 @@ boolean ATECCX08A::AES_ECB_decrypt(uint8_t *data, uint16_t slot, boolean debug)
     if(debug) Serial.println("checkCountResult && checkCrcResult are false. Returning false.");
     return false;
   }
->>>>>>> Stashed changes
 
-
-
-<<<<<<< Updated upstream
-
-=======
 boolean ATECCX08A::writeProvisionConfig()
 {
   // keep track of our write command results.
@@ -1171,8 +1150,6 @@ boolean ATECCX08A::loadPublicKey(uint8_t *data, bool debug)
 	if (debug) Serial.println("Loaded Public Key X Component Successfully");
 	//return true;   // If we hear a "0x00", that means it had a successful write
 	}
->>>>>>> Stashed changes
-
 
 
 
