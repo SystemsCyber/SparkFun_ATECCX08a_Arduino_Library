@@ -103,19 +103,27 @@
 #define ADDRESS_DATA_READ_SLOT10_BLOCK_0	0x0050
 #define ADDRESS_DATA_READ_SLOT10_BLOCK_1	0x0150
 
+#define ADDRESS_DATA_SLOT8_BLOCK_0	0x0040
+#define ADDRESS_DATA_SLOT8_BLOCK_1	0x0140
+#define ADDRESS_DATA_SLOT8_BLOCK_2	0x0240
+#define ADDRESS_DATA_SLOT8_BLOCK_3	0x0340
+
 class ATECCX08A {
   public:
     //By default use Wire, standard I2C speed, and the default ADS1015 address
 	#if defined(__IMXRT1062__)
-	boolean begin(uint8_t i2caddr = ATECC608A_ADDRESS_DEFAULT, TwoWire &wirePort = Wire);
+	boolean begin(uint8_t i2caddr = ATECC608A_ADDRESS_DEFAULT, TwoWire &wirePort = Wire, Stream &serialPort = Serial);
 	#endif
 	#if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
-	boolean begin(uint8_t i2caddr = ATECC608A_ADDRESS_DEFAULT, i2c_t3 &wirePort = Wire);
+	boolean begin(uint8_t i2caddr = ATECC608A_ADDRESS_DEFAULT, i2c_t3 &wirePort = Wire, Stream &serialPort = Serial);
 	#endif
 	
 	uint8_t inputBuffer[128]; // used to store messages received from the IC as they come in
 	uint8_t configZone[128]; // used to store configuration zone bytes read from device EEPROM
 	uint8_t storedPublicKey[64];
+
+	uint8_t storedRSAKey[270];
+
 	uint8_t revisionNumber[5]; // used to store the complete revision number, pulled from configZone[4-7]
 	uint8_t serialNumber[9]; // used to store the complete Serial number, pulled from configZone[0-3] and configZone[8-12]
 	boolean configLockStatus; // pulled from configZone[87], then set according to status (0x55=UNlocked, 0x00=Locked)
@@ -174,6 +182,9 @@ class ATECCX08A {
 	boolean writeProvisionConfig();
 	boolean loadPublicKey(uint8_t *data, bool debug = false);
 	boolean readPublicKey(bool debug = false);
+	boolean readRSAKey(bool debug = false);
+	
+
   private:
 
 	#if defined(__IMXRT1062__)
@@ -184,6 +195,9 @@ class ATECCX08A {
 	#endif
 
 	uint8_t _i2caddr;
+
+	Stream *_debugSerial; //The generic connection to user's chosen serial hardware
+	
 	
 };
 

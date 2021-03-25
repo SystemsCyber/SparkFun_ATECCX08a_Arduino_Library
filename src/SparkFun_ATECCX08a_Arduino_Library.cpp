@@ -37,12 +37,14 @@
 */
 
 #if defined(__IMXRT1062__)
-boolean ATECCX08A::begin(uint8_t i2caddr, TwoWire &wirePort)
+boolean ATECCX08A::begin(uint8_t i2caddr, TwoWire &wirePort, Stream &serialPort)
 #endif
 #if defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
-boolean ATECCX08A::begin(uint8_t i2caddr, i2c_t3 &wirePort)
+boolean ATECCX08A::begin(uint8_t i2caddr, i2c_t3 &wirePort, Stream &serialPort)
 #endif
 {
+    
+  _debugSerial = &serialPort; //Grab which port the user wants us to use
   //Bring in the user's choices
   _i2cPort = &wirePort; //Grab which port the user wants us to use
 
@@ -492,16 +494,17 @@ boolean ATECCX08A::checkCount(boolean debug)
 {
   if(debug)
   {
-    Serial.print("countGlobal: 0x");
-	Serial.println(countGlobal, HEX);
-	Serial.print("count heard from IC (inpuBuffer[0]): 0x");
-    Serial.println(inputBuffer[0], HEX);
+    _debugSerial->print("countGlobal: 0x");
+ 	  _debugSerial->println(countGlobal, HEX);
+ 	  _debugSerial->print("count heard from IC (inpuBuffer[0]): 0x");
+    _debugSerial->println(inputBuffer[0], HEX);
+
   }
   // Check count; the first byte sent from IC is count, and it should be equal to the actual message count
   if(inputBuffer[0] != countGlobal) 
   {
-	if(debug) Serial.println("Message Count Error");
-	return false;
+	if(debug) _debugSerial->println("Message Count Error");
+ 	return false;
   }  
   return true;
 }
@@ -1117,10 +1120,10 @@ boolean ATECCX08A::AES_ECB_decrypt(uint8_t *data, uint16_t slot, boolean debug)
   }
   return true;
   }
+
   else return false;
 
 }
-
 
 boolean ATECCX08A::writeProvisionConfig()
 {
@@ -1182,6 +1185,8 @@ boolean ATECCX08A::loadPublicKey(uint8_t *data, bool debug)
 	//return true;   // If we hear a "0x00", that means it had a successful write
 	}
 
+
+
 	//Now Write second 32 bytes of public key to slot 10
 	sendCommand(COMMAND_OPCODE_WRITE, WRITE_DATA_32, ADDRESS_DATA_READ_SLOT10_BLOCK_1, public_y, 32);
 	delay(100);
@@ -1218,6 +1223,34 @@ boolean ATECCX08A::readPublicKey(boolean debug)
     Serial.print(storedPublicKey[i], HEX); 
     Serial.print(",");
     if((sizeof(storedPublicKey)-i) % 16 == 0 && i != 0) Serial.println();
+    }
+    Serial.println();
+  }
+}
+
+
+
+boolean ATECCX08A::readRSAKey(boolean debug)
+{
+  
+  for (int i = 0; i < sizeof(storedRSAKey); i += 32)
+  {
+      read(ZONE_DATA, ADDRESS_DATA_SLOT8_BLOCK_0+i, 32);
+      memcpy(&storedRSAKey[i], &inputBuffer[1], 32);
+  }
+
+  if(debug)
+  {
+    Serial.println("storedPublicKey: ");
+    for (int i = 0; i < sizeof(storedPublicKey) ; i++)
+    {
+      Serial.print(i);
+    Serial.print(": 0x");
+    if((storedPublicKey[i] >> 4) == 0) Serial.print("0"); // print preceeding high nibble if it's zero
+    Serial.print(storedPublicKey[i], HEX); 
+    Serial.print(" \t0b");
+    for(int bit = 7; bit >= 0; bit--) Serial.print(bitRead(storedPublicKey[i],bit)); // print binary WITH preceding '0' bits
+    Serial.println();
     }
     Serial.println();
   }
